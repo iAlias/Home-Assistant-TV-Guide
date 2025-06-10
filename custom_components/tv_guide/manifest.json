@@ -1,16 +1,17 @@
 {
-  "domain": "tv_guide",
-  "name": "TV Guide Sensor",
-  "version": "2.0.1",
-  "documentation": "https://github.com/<tuo-user>/home-assistant-tv_guide#readme",
-  "issue_tracker": "https://github.com/<tuo-user>/home-assistant-tv_guide/issues",
+  "domain": "tv_guide_multi",
+  "name": "TV Guide Multi\u2011Source",
+  "version": "3.0.0",
+  "documentation": "https://github.com/<user>/ha-tv-guide-multi",
+  "issue_tracker": "https://github.com/<user>/ha-tv-guide-multi/issues",
   "codeowners": [
-    "@<tuo-user>"
+    "@<user>"
   ],
   "iot_class": "cloud_polling",
   "requirements": [
-    "aiohttp",
-    "async_timeout"
+    "aiohttp>=3.8.4",
+    "async_timeout>=4.0.3",
+    "python-dateutil>=2.8.2"
   ],
   "dependencies": []
 }
