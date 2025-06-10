@@ -1,5 +1,4 @@
 # Home-Assistant-TV-Guide
-# TV Guide Sensor for Home Assistant
 
 Mostra i programmi *Ora in onda* e *Prima serata* (>= 20:30) utilizzando la
 [TVmaze Public API](https://www.tvmaze.com/api).
