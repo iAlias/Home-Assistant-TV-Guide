@@ -1,6 +1,6 @@
 {
-  "name": "TV Guide",
+  "name": "TV Guide Multi\u2011Source",
   "content_in_root": false,
-  "file_name": "tv-guide-card.js",
+  "file_name": "tv-guide-multi-card.js",
   "render_readme": true
 }
