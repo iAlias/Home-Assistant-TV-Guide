@@ -1,298 +1,159 @@
+"""TV Guide Multi-Source 3.1.0 — scraper “TV Sorrisi e Canzoni”.
 
-"""Multi‑source TV Guide Sensor.
+Preleva due pagine HTML:
+    • https://www.sorrisi.com/guidatv/ora-in-tv/
+    • https://www.sorrisi.com/guidatv/stasera-in-tv/
 
-Combina palinsesti da più endpoint pubblici (TVmaze, TVIT, IPTV‑org JSON).
-Verifica coerenza tra fonti e restituisce solo i programmi presenti
-in almeno 2/3 fonti (o un'unica fonte se le altre non coprono il canale).
+Estrae (canale, titolo) e popola i sensori:
+    sensor.guida_tv_ora_in_onda
+    sensor.guida_tv_prima_serata
 """
 
 from __future__ import annotations
 
+import asyncio
+from datetime import datetime
 import logging
-from datetime import datetime, time, timedelta, date
-from collections import defaultdict, Counter
-from typing import Dict, List, Tuple
+from typing import Dict, List
 
-import async_timeout
 import aiohttp
+import async_timeout
 import voluptuous as vol
-from dateutil import parser as dtparser
+from bs4 import BeautifulSoup
 
-from homeassistant.const import CONF_NAME
 from homeassistant.components.sensor import SensorEntity
+from homeassistant.const import CONF_NAME
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 import homeassistant.helpers.config_validation as cv
 
 _LOGGER = logging.getLogger(__name__)
 
-CONF_COUNTRY = "country"
-DEFAULT_COUNTRY = "IT"
 DEFAULT_NAME = "Guida TV"
-MIN_AGREEMENT = 2  # quante fonti devono concordare
 
-TM_API = "https://api.tvmaze.com/schedule?country={country}&date={date}"
-TVIT_API = "https://raw.githubusercontent.com/leica37/tvit/main/epg/it_full.json"
-IPTV_JSON = "https://iptv-org.github.io/api/guide/it.json"
+URL_NOW = "https://www.sorrisi.com/guidatv/ora-in-tv/"
+URL_PRIME = "https://www.sorrisi.com/guidatv/stasera-in-tv/"
 
 PLATFORM_SCHEMA = cv.PLATFORM_SCHEMA.extend(
-    {
-        vol.Optional(CONF_NAME, default=DEFAULT_NAME): cv.string,
-        vol.Optional(CONF_COUNTRY, default=DEFAULT_COUNTRY): cv.string,
-    }
+    {vol.Optional(CONF_NAME, default=DEFAULT_NAME): cv.string}
 )
 
 
-async def async_setup_platform(hass: HomeAssistant, config, async_add_entities, _=None):
-    name = config[CONF_NAME]
-    country = config[CONF_COUNTRY].upper()
+async def async_setup_platform(
+    hass: HomeAssistant, config, async_add_entities, discovery_info=None
+):
+    """Configura i sensori."""
+    name = config.get(CONF_NAME)
     session = async_get_clientsession(hass)
-    sensors = [
-        TVGMNowSensor(name, country, session),
-        TVGMPrimeSensor(name, country, session),
-    ]
-    async_add_entities(sensors, True)
+
+    async_add_entities(
+        [SorrisiNowSensor(name, session), SorrisiPrimeSensor(name, session)], True
+    )
 
 
-# ------------------------------------------------------------------------
-# Source fetchers
-# ------------------------------------------------------------------------
-
-class BaseSource:
-    """Abstract base class for a palinsesto source."""
-
-    async def fetch(self, session: aiohttp.ClientSession, country: str, today: date) -> List[Dict]:
-        raise NotImplementedError
+# -----------------------------------------------------------------------------
 
 
-class TVMazeSource(BaseSource):
-    async def fetch(self, session, country, today):
-        url = TM_API.format(country=country, date=today.isoformat())
-        async with async_timeout.timeout(10):
+async def _fetch_page(session: aiohttp.ClientSession, url: str) -> str | None:
+    """Download semplice con timeout e log."""
+    try:
+        async with async_timeout.timeout(15):
             resp = await session.get(url)
             if resp.status != 200:
-                _LOGGER.debug("TVMaze %s -> %s", url, resp.status)
-                return []
-            data = await resp.json(content_type=None)
-            result = []
-            for item in data:
-                show = item.get("show", {})
-                network = show.get("network") or show.get("webChannel") or {}
-                result.append(
-                    {
-                        "channel": network.get("name"),
-                        "title": show.get("name"),
-                        "airtime": item.get("airtime"),
-                        "runtime": item.get("runtime") or 60,
-                    }
-                )
-            return result
+                _LOGGER.warning("Sorrisi: %s status %s", url, resp.status)
+                return None
+            return await resp.text()
+    except Exception as err:  # noqa: BLE001
+        _LOGGER.error("Errore fetching %s: %s", url, err)
+        return None
 
 
-class TVITSource(BaseSource):
-    async def fetch(self, session, country, today):
-        if country != "IT":
-            return []
-        async with async_timeout.timeout(15):
-            resp = await session.get(TVIT_API)
-            if resp.status != 200:
-                return []
-            j = await resp.json(content_type=None)
-        raw = j.get("epg") or j.get("list") or j
-        res = []
-        for ep in raw:
-            try:
-                chan = ep["channel"]
-                title = ep["title"]
-                start_iso = ep["start"]
-                stop_iso = ep["stop"]
-                start_dt = dtparser.isoparse(start_iso).astimezone()
-                runtime = int((dtparser.isoparse(stop_iso) - dtparser.isoparse(start_iso)).total_seconds() / 60)
-                res.append(
-                    {
-                        "channel": chan,
-                        "title": title,
-                        "airtime": start_dt.strftime("%H:%M"),
-                        "runtime": runtime,
-                    }
-                )
-            except Exception:
-                continue
-        return res
+def _parse_sorrisi(html: str) -> Dict[str, str]:
+    """Ritorna {canale: titolo} dal markup di Sorrisi e Canzoni."""
+    soup = BeautifulSoup(html, "html.parser")
+    mapping: Dict[str, str] = {}
+
+    # Ogni canale è in <h3> col titolo del programma subito dopo
+    # il markup attuale è: <h3>Rai 1</h3><p class="title">Il Paradiso...</p>
+    for h in soup.find_all("h3"):
+        channel = h.get_text(strip=True)
+        # Cerca l'elemento successivo che contenga il titolo
+        nxt = h.find_next(lambda tag: tag.name in ("h4", "p") and tag.get_text(strip=True))
+        if channel and nxt:
+            title = nxt.get_text(strip=True)
+            mapping[channel] = title
+
+    _LOGGER.debug("Estratti %s programmi", len(mapping))
+    return mapping
 
 
-class IPTVOrgSource(BaseSource):
-    async def fetch(self, session, country, today):
-        if country != "IT":
-            return []
-        async with async_timeout.timeout(15):
-            resp = await session.get(IPTV_JSON)
-            if resp.status != 200:
-                return []
-            data = await resp.json(content_type=None)
-        res = []
-        for ch in data:
-            chan = ch.get("name")
-            for pr in ch.get("programs", []):
-                try:
-                    title = pr["title"]
-                    start = dtparser.isoparse(pr["start"]).astimezone()
-                    runtime = int((dtparser.isoparse(pr["stop"]) - dtparser.isoparse(pr["start"])).total_seconds() / 60)
-                    res.append(
-                        {
-                            "channel": chan,
-                            "title": title,
-                            "airtime": start.strftime("%H:%M"),
-                            "runtime": runtime,
-                        }
-                    )
-                except Exception:
-                    continue
-        return res
+async def get_now_and_prime(session) -> tuple[Dict[str, str], Dict[str, str]]:
+    """Scarica ed estrae le due sezioni; ritorna (ora, stasera)."""
+    html_now, html_prime = await asyncio.gather(
+        _fetch_page(session, URL_NOW), _fetch_page(session, URL_PRIME)
+    )
+    now_map = _parse_sorrisi(html_now) if html_now else {}
+    prime_map = _parse_sorrisi(html_prime) if html_prime else {}
+    return now_map, prime_map
 
 
-SOURCES = [TVMazeSource(), TVITSource(), IPTVOrgSource()]
-
-# ------------------------------------------------------------------------
-# Consensus builder
-# ------------------------------------------------------------------------
-
-def build_consensus(lists: List[List[Dict]]) -> List[Dict]:
-    """Return items present in at least MIN_AGREEMENT sources.
-
-    Key for grouping: (channel, airtime)
-    """
-    buckets: Dict[Tuple[str, str], Counter] = defaultdict(Counter)
-    info: Dict[Tuple[str, str], Dict] = {}
-    for source_idx, lst in enumerate(lists):
-        for item in lst:
-            key = (item.get("channel"), item.get("airtime"))
-            if not key[0] or not key[1]:
-                continue
-            buckets[key][item.get("title")] += 1
-            # store detail once
-            info.setdefault(key, item)
-
-    consensus = []
-    for key, counter in buckets.items():
-        # choose the most common title
-        title, votes = counter.most_common(1)[0]
-        if votes >= MIN_AGREEMENT or len(counter) == 1:
-            itm = info[key].copy()
-            itm["title"] = title
-            consensus.append(itm)
-    return consensus
+# -----------------------------------------------------------------------------
 
 
-# ------------------------------------------------------------------------
-# Sensors
-# ------------------------------------------------------------------------
+class _SorrisiBase(SensorEntity):
+    """Base comune; scarica una sola volta al giorno."""
 
-class TVGuideMultiBase(SensorEntity):
     _attr_should_poll = True
+    _cache_date: str | None = None
+    _cache_now: Dict[str, str] = {}
+    _cache_prime: Dict[str, str] = {}
+    _session: aiohttp.ClientSession
 
-    def __init__(self, name: str, country: str, session: aiohttp.ClientSession):
-        self._name_base = name
-        self._country = country
-        self._session = session
-        self._schedule: List[Dict] = []
-        self._fetched_date: date | None = None
-        self._attr_extra_state_attributes = {}
-        self._attr_icon = "mdi:television"
-        self._attr_native_value = None
-
-    async def _update_schedule(self):
-        today = datetime.now().date()
-        if self._fetched_date == today:
+    async def _ensure_cache(self):
+        today = datetime.now().strftime("%Y-%m-%d")
+        if self._cache_date == today:
             return
-        # fetch in parallel
-        fetched_lists = await asyncio.gather(
-            *[src.fetch(self._session, self._country, today) for src in SOURCES],
-            return_exceptions=True,
-        )
-        cleaned = []
-        for idx, lst in enumerate(fetched_lists):
-            if isinstance(lst, Exception):
-                _LOGGER.debug("Source %s error: %s", SOURCES[idx].__class__.__name__, lst)
-                continue
-            cleaned.append(lst)
-        self._schedule = build_consensus(cleaned)
-        self._fetched_date = today
-
-    # helpers
-    @staticmethod
-    def _parse_time(tstr: str) -> time:
-        h, m = map(int, tstr.split(":"))
-        return time(h, m)
-
-    def _now_list(self):
-        now_dt = datetime.now()
-        return [
-            it for it in self._schedule
-            if self._is_on_air(now_dt, it)
-        ]
-
-    def _is_on_air(self, now_dt: datetime, item: Dict) -> bool:
-        start_t = self._parse_time(item["airtime"])
-        runtime = item["runtime"]
-        start_dt = datetime.combine(now_dt.date(), start_t)
-        return start_dt <= now_dt < start_dt + timedelta(minutes=runtime)
-
-    def _prime_time_list(self):
-        return [
-            it for it in self._schedule if self._parse_time(it["airtime"]) >= time(20, 30)
-        ]
+        self._cache_now, self._cache_prime = await get_now_and_prime(self._session)
+        self._cache_date = today
 
 
-import asyncio
+class SorrisiNowSensor(_SorrisiBase):
+    """Programmi in onda adesso."""
 
-class TVGMNowSensor(TVGuideMultiBase):
     _attr_icon = "mdi:television-play"
 
-    def __init__(self, name, country, session):
-        super().__init__(name, country, session)
-        self._attr_name = f"{name} - Ora in onda"
-        self._attr_unique_id = f"tvgm_now_{country.lower()}"
+    def __init__(self, base_name: str, session):
+        self._attr_name = f"{base_name} - Ora in onda"
+        self._attr_unique_id = "tvguide_sorrisi_now"
+        self._session = session
 
     async def async_update(self):
-        await self._update_schedule()
-        nowlist = self._now_list()
-        if nowlist:
-            first = nowlist[0]
-            self._attr_native_value = f"{first['title']} ({first['channel']})"
-            self._attr_extra_state_attributes = {
-                "programmi_correnti": {it["channel"]: it["title"] for it in nowlist},
-                "fonte": "multi",
-            }
-        else:
-            self._attr_native_value = "Nessun dato"
-            self._attr_extra_state_attributes = {
-                "programmi_correnti": {},
-                "fonte": "multi",
-            }
+        await self._ensure_cache()
+        self._attr_native_value = (
+            next(iter(self._cache_now.values())) if self._cache_now else "Nessun dato"
+        )
+        self._attr_extra_state_attributes = {
+            "programmi_correnti": self._cache_now,
+            "fonte": "sorrisi.com",
+        }
 
 
-class TVGMPrimeSensor(TVGuideMultiBase):
+class SorrisiPrimeSensor(_SorrisiBase):
+    """Programmi di prima serata (Stasera)."""
+
     _attr_icon = "mdi:movie-open"
 
-    def __init__(self, name, country, session):
-        super().__init__(name, country, session)
-        self._attr_name = f"{name} - Prima serata"
-        self._attr_unique_id = f"tvgm_prime_{country.lower()}"
+    def __init__(self, base_name: str, session):
+        self._attr_name = f"{base_name} - Prima serata"
+        self._attr_unique_id = "tvguide_sorrisi_prime"
+        self._session = session
 
     async def async_update(self):
-        await self._update_schedule()
-        primelist = self._prime_time_list()
-        primelist.sort(key=lambda x: TVGuideMultiBase._parse_time(x["airtime"]))
-        if primelist:
-            first = primelist[0]
-            self._attr_native_value = f"{first['title']} ({first['channel']})"
-        else:
-            self._attr_native_value = "Nessun dato"
-
+        await self._ensure_cache()
+        self._attr_native_value = (
+            next(iter(self._cache_prime.values())) if self._cache_prime else "Nessun dato"
+        )
         self._attr_extra_state_attributes = {
-            "prima_serata": {
-                it["channel"]: f"{it['title']} alle {it['airtime']}" for it in primelist
-            },
-            "fonte": "multi",
+            "prima_serata": self._cache_prime,
+            "fonte": "sorrisi.com",
         }
