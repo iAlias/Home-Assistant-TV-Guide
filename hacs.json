@@ -1,4 +1,6 @@
 {
   "name": "TV Guide",
-  "content_in_root": false
+  "content_in_root": false,
+  "file_name": "tv-guide-card.js",
+  "render_readme": true
 }
