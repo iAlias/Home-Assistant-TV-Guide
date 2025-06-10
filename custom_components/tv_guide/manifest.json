@@ -1,7 +1,7 @@
 {
   "domain": "tv_guide",
   "name": "TV Guide Sensor",
-  "version": "1.0.1",
+  "version": "2.0.0",
   "documentation": "https://github.com/<tuo-user>/home-assistant-tv_guide#readme",
   "issue_tracker": "https://github.com/<tuo-user>/home-assistant-tv_guide/issues",
   "codeowners": [
