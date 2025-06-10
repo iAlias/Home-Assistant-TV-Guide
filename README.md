@@ -1,47 +1,35 @@
 
-# TV Guide Sensor for Home Assistant
+# TV Guide Multi‑Source (v3.0.0)
 
-Mostra i programmi *Ora in onda* e *Prima serata* (≥ 20:30) utilizzando la
-[TVmaze Public API](https://www.tvmaze.com/api).
+Integrazione Home Assistant che aggrega i palinsesti da 3 fonti gratuite:
+* TVmaze
+* TVIT (repo GitHub open source)
+* IPTV-org JSON guide
 
-## Installazione tramite HACS
-1. Aggiungi questo repository in **HACS ▸ Integrazioni ▸ ⋮ ▸ Custom repositories**
-   (categoria “Integration”).
-2. Cerca **TV Guide** e clicca **Installa**.
-3. Aggiungi nel tuo `configuration.yaml`:
+Ogni programma viene incluso solo se **almeno 2 fonti** concordano
+(o se è presente in una sola fonte quando le altre non coprono il canale).
 
+## Installazione (HACS)
+1. Aggiungi questo repo ai *Custom repositories* (categoria Integration).
+2. Installa, riavvia HA.
+
+### YAML
 ```yaml
 sensor:
-  - platform: tv_guide
+  - platform: tv_guide_multi
     name: "Guida TV"
-    country: IT  # codice ISO-3166
+    country: IT
 ```
 
-4. Riavvia Home Assistant.
-
-Entità create:
-* `sensor.guida_tv_ora_in_onda`
-* `sensor.guida_tv_prima_serata`
-
-### Attribuzione
-Dati forniti da [TVmaze.com](https://www.tvmaze.com/).
-
-
-## Lovelace card minimal
-
-Copia `www/tv-guide-card.js` in `/config/www/` (HACS lo farà per te se usi `panel_iframe`), poi
-aggiungi la risorsa:
-
+### Card
 ```yaml
 resources:
-  - url: /local/tv-guide-card.js
+  - url: /local/tv-guide-multi-card.js?v=1
     type: module
 ```
 
-E inserisci la card:
-
 ```yaml
-type: custom:tv-guide-card
+type: custom:tv-guide-multi-card
 title: Guida TV
 now_entity: sensor.guida_tv_ora_in_onda
 prime_entity: sensor.guida_tv_prima_serata
@@ -52,7 +40,5 @@ channels:
   - Rete 4
   - Canale 5
   - Italia 1
+  - La7
 ```
-
-La card mostrerà due sezioni (“Ora in onda” e “Stasera in TV”) con layout
-moderno e minimal.
