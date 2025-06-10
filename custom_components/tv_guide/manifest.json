@@ -1,17 +1,15 @@
 {
   "domain": "tv_guide_multi",
-  "name": "TV Guide Multi\u2011Source",
-  "version": "3.0.0",
-  "documentation": "https://github.com/<user>/ha-tv-guide-multi",
-  "issue_tracker": "https://github.com/<user>/ha-tv-guide-multi/issues",
-  "codeowners": [
-    "@<user>"
-  ],
+  "name": "TV Guide Multi-Source",
+  "version": "3.1.0",
+  "documentation": "https://github.com/<tuo-user>/ha-tv-guide-multi",
+  "issue_tracker": "https://github.com/<tuo-user>/ha-tv-guide-multi/issues",
+  "codeowners": ["@<tuo-user>"],
   "iot_class": "cloud_polling",
   "requirements": [
     "aiohttp>=3.8.4",
     "async_timeout>=4.0.3",
-    "python-dateutil>=2.8.2"
+    "beautifulsoup4>=4.12.3"
   ],
   "dependencies": []
 }
