@@ -1,11 +1,16 @@
 {
   "domain": "tv_guide",
   "name": "TV Guide Sensor",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "documentation": "https://github.com/<tuo-user>/home-assistant-tv_guide#readme",
   "issue_tracker": "https://github.com/<tuo-user>/home-assistant-tv_guide/issues",
-  "codeowners": ["@<tuo-user>"],
+  "codeowners": [
+    "@<tuo-user>"
+  ],
   "iot_class": "cloud_polling",
-  "requirements": ["aiohttp", "async_timeout"],
+  "requirements": [
+    "aiohttp",
+    "async_timeout"
+  ],
   "dependencies": []
 }
