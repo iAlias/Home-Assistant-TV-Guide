@@ -1,8 +1,8 @@
 
-"""Sensori Guida TV per Home Assistant basati sull'API pubblica di TVmaze."""
+"""Sensori Guida TV per Home Assistant, Italia compresa (TVmaze + TVIT)."""
 from __future__ import annotations
 
-from datetime import datetime, time, timedelta
+from datetime import datetime, time, timedelta, timezone
 import logging
 
 import async_timeout
@@ -18,9 +18,10 @@ _LOGGER = logging.getLogger(__name__)
 CONF_COUNTRY = "country"
 DEFAULT_COUNTRY = "IT"
 DEFAULT_NAME = "Guida TV"
-ATTRIBUTION = "Dati forniti da TVmaze.com"
+ATTRIBUTION = "Dati forniti da TVmaze.com / TVIT"
 
 API_URL = "https://api.tvmaze.com/schedule?country={country}&date={date}"
+TVIT_EPG_URL = "https://tvit.leicaflorianrobert.dev/epg/list.json"
 
 PLATFORM_SCHEMA = cv.PLATFORM_SCHEMA.extend(
     {
@@ -63,38 +64,78 @@ class TVGuideBaseSensor(SensorEntity):
     def extra_state_attributes(self):
         return self._attrs
 
+    # --------------------------------------------------------------
+    async def _fetch_tvmaze(self, today: datetime.date) -> list[dict]:
+        url = API_URL.format(country=self._country, date=today.isoformat())
+        async with async_timeout.timeout(10):
+            resp = await self._session.get(url)
+            if resp.status != 200:
+                _LOGGER.info("TVmaze status %s for %s", resp.status, self._country)
+                return []
+            data = await resp.json()
+            return data if isinstance(data, list) else []
+
+    async def _fetch_tvit(self, today: datetime.date) -> list[dict]:
+        # Solo per Italia
+        if self._country != "IT":
+            return []
+        async with async_timeout.timeout(15):
+            resp = await self._session.get(TVIT_EPG_URL)
+            if resp.status != 200:
+                _LOGGER.warning("TVIT status %s", resp.status)
+                return []
+            data = await resp.json()
+
+        epg_list = data.get("epg") if isinstance(data, dict) else None
+        if not epg_list:
+            _LOGGER.error("TVIT JSON malformato")
+            return []
+
+        converted: list[dict] = []
+        for item in epg_list:
+            try:
+                chan = item["channel"].strip()
+                title = item["title"].strip()
+                start_iso = item["start"]
+                stop_iso = item["stop"]
+                start_dt = datetime.fromisoformat(start_iso.replace("Z", "+00:00")).astimezone()
+                stop_dt = datetime.fromisoformat(stop_iso.replace("Z", "+00:00")).astimezone()
+                runtime = int((stop_dt - start_dt).total_seconds() / 60)
+                converted.append(
+                    {
+                        "airtime": start_dt.strftime("%H:%M"),
+                        "runtime": runtime,
+                        "show": {"name": title, "network": {"name": chan}},
+                    }
+                )
+            except Exception as exc:  # noqa: BLE001
+                _LOGGER.debug("Salto item non valido: %s", exc)
+        return converted
+
     async def _update_schedule(self):
         today = datetime.now().date()
         if self._last_fetch_date == today:
             return
 
-        url = API_URL.format(country=self._country, date=today.isoformat())
+        schedule: list[dict] = []
 
+        # 1. Tentativo con TVmaze
         try:
-            async with async_timeout.timeout(10):
-                resp = await self._session.get(url)
-                if resp.status != 200:
-                    _LOGGER.warning(
-                        "TVmaze ha risposto %s per %s – paese forse non supportato",
-                        resp.status,
-                        self._country,
-                    )
-                    self._schedule = []
-                    self._last_fetch_date = today
-                    return
-
-                data = await resp.json()
-                if not isinstance(data, list):
-                    _LOGGER.error("Risposta inattesa da TVmaze: %s", str(data)[:120])
-                    data = []
-
-                self._schedule = data
-                self._last_fetch_date = today
-
+            schedule = await self._fetch_tvmaze(today)
         except Exception as err:  # noqa: BLE001
-            _LOGGER.error("Errore nel recupero del palinsesto: %s", err)
+            _LOGGER.error("Errore TVmaze: %s", err)
 
-    # ------------------------------------------------------------------
+        # 2. Se vuoto e paese IT, fallback a TVIT
+        if not schedule and self._country == "IT":
+            try:
+                schedule = await self._fetch_tvit(today)
+            except Exception as err:  # noqa: BLE001
+                _LOGGER.error("Errore TVIT: %s", err)
+
+        self._schedule = schedule
+        self._last_fetch_date = today
+
+    # --------------------------------------------------------------
     @staticmethod
     def _parse_time(tstr: str | None) -> time:
         if not tstr:
