@@ -52,3 +52,8 @@ style: |
 
   }
 ```
+
+### Editor visuale
+La card include un editor grafico utilizzabile dall'interfaccia Lovelace.
+Da qui puoi modificare titolo, entità e lista dei canali senza ricorrere
+al codice YAML.
