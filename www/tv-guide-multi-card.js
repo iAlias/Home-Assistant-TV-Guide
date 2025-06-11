@@ -225,4 +225,3 @@ TvGuideMultiCard.getStubConfig = function () {
     channels: ['Rai 1', 'Rai 2', 'Rai 3'],
   };
 };
-
