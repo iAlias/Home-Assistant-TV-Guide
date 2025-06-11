@@ -1,5 +1,6 @@
+# <img src="icon.svg" width="96" alt="icon" align="right">
 
-# TV Guide Multi‑Source (v3.0.0)
+# TV Guide Multi‑Source (v3.1.1)
 
 Integrazione Home Assistant che aggrega i palinsesti da 3 fonti gratuite:
 * TVmaze
