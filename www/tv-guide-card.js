@@ -6,9 +6,13 @@ class TvGuideMultiCard extends HTMLElement{
     if(!this.root){
       this.root=this.attachShadow({mode:'open'});
       const style=document.createElement('style');
-      style.textContent='ha-card{padding:1rem} h3{margin:0 0 .4rem 0;font-size:1rem;font-weight:500} ul{padding:0;margin:0;list-style:none} li{display:flex;justify-content:space-between;padding:.2rem 0;border-bottom:1px solid var(--divider-color)} span.value{font-weight:500}';
+      style.textContent='.tvg-container{padding:16px;display:grid;row-gap:16px;font-family:var(--ha-card-header-font-family,"Roboto","Helvetica Neue",sans-serif)}h3{margin:0 0 8px;font-size:1rem;font-weight:600}ul{padding:0;margin:0;list-style:none}li{display:grid;grid-template-columns:auto 1fr;gap:8px;align-items:center;padding:4px 0;line-height:1.4;border-bottom:1px solid var(--divider-color)}span.channel{font-weight:600}span.value{font-weight:500;color:var(--primary-text-color)}';
       this.root.appendChild(style);
       this.card=document.createElement('ha-card');
+      if(c.title) this.card.header=c.title;
+      this.container=document.createElement('div');
+      this.container.className='tvg-container';
+      this.card.appendChild(this.container);
       this.root.appendChild(this.card);
     }
     const now=h.states[c.now_entity];
@@ -16,8 +20,8 @@ class TvGuideMultiCard extends HTMLElement{
     const ch=c.channels||[];
     const nowMap=now?.attributes.programmi_correnti||{};
     const primeMap=prime?.attributes.prima_serata||{};
-    const list=(title,map)=>{let html='<h3>'+title+'</h3><ul>';ch.forEach(k=>{html+='<li><span>'+k+'</span><span class="value">'+(map[k]||'—')+'</span></li>';});html+='</ul>';return html;}
-    this.card.innerHTML=`<h2 class="card-header">${c.title||'Guida TV'}</h2>${list('Ora in onda',nowMap)}${list('Stasera',primeMap)}`;
+    const list=(title,map)=>{let html='<h3>'+title+'</h3><ul>';ch.forEach(k=>{html+='<li><span class="channel">'+k+'</span><span class="value">'+(map[k]||'—')+'</span></li>';});html+='</ul>';return html;}
+    this.container.innerHTML=`${list('Ora in onda',nowMap)}${list('Stasera',primeMap)}`;
   }
   getCardSize(){return 3}
 }

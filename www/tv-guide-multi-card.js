@@ -20,11 +20,38 @@ class TvGuideMultiCard extends HTMLElement {
 
       const style = document.createElement("style");
       style.textContent = `
-        .tvg-container{padding:16px;display:grid;row-gap:16px;font-family:var(--ha-card-header-font-family,"Roboto","Helvetica Neue",sans-serif)}
-        h3{margin:0 0 8px 0;font-size:1rem;font-weight:500}
-        ul{padding:0;margin:0;list-style:none}
-        li{display:flex;justify-content:space-between;align-items:center;padding:2px 0;border-bottom:1px solid var(--divider-color)}
-        .prog{font-weight:500}
+        .tvg-container {
+          padding: 16px;
+          display: grid;
+          row-gap: 16px;
+          font-family: var(--ha-card-header-font-family, "Roboto", "Helvetica Neue", sans-serif);
+        }
+        h3 {
+          margin: 0 0 8px 0;
+          font-size: 1rem;
+          font-weight: 600;
+        }
+        ul {
+          padding: 0;
+          margin: 0;
+          list-style: none;
+        }
+        li {
+          display: grid;
+          grid-template-columns: auto 1fr;
+          gap: 8px;
+          align-items: center;
+          padding: 4px 0;
+          line-height: 1.4;
+          border-bottom: 1px solid var(--divider-color);
+        }
+        span.channel {
+          font-weight: 600;
+        }
+        span.prog {
+          font-weight: 500;
+          color: var(--primary-text-color);
+        }
       `;
       this.card.appendChild(style);
       this.appendChild(this.card);
@@ -43,7 +70,7 @@ class TvGuideMultiCard extends HTMLElement {
       let html = `<h3>${label}</h3><ul>`;
       channels.forEach(ch => {
         const title = map[ch] || "—";
-        html += `<li><span>${ch}</span><span class="prog">${title}</span></li>`;
+        html += `<li><span class="channel">${ch}</span><span class="prog">${title}</span></li>`;
       });
       html += "</ul>";
       return html;

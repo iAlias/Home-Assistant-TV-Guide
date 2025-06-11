@@ -45,7 +45,13 @@ CHANNEL_ORDER = [
 ]
 
 # Alcuni canali non vanno mostrati
-SKIP_CHANNELS = {"IRIS", "CANALE 20", "20", "20 MEDIASET"}
+SKIP_CHANNELS = {
+    "IRIS",
+    "CANALE20",
+    "20",
+    "20MEDIASET",
+    "RAI4",
+
 
 URL_NOW = "https://www.sorrisi.com/guidatv/ora-in-tv/"
 URL_PRIME = "https://www.sorrisi.com/guidatv/stasera-in-tv/"
