@@ -1,7 +1,8 @@
 {
   "domain": "tv_guide_multi",
   "name": "TV Guide Multi-Source",
-  "version": "4.0.0",
+  "version": "4.1.0",
+
   "icon": "mdi:television-guide",
   "documentation": "https://github.com/<tuo-user>/ha-tv-guide-multi",
   "issue_tracker": "https://github.com/<tuo-user>/ha-tv-guide-multi/issues",
