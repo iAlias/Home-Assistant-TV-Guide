@@ -9,8 +9,7 @@
   "iot_class": "cloud_polling",
   "requirements": [
     "aiohttp>=3.8.4",
-    "async_timeout>=4.0.3",
-    "beautifulsoup4>=4.12.3"
+    "async_timeout>=4.0.3"
   ],
   "dependencies": []
 }

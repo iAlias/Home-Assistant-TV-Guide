@@ -2,13 +2,9 @@
 
 # TV Guide Multi‑Source (v3.1.1)
 
-Integrazione Home Assistant che aggrega i palinsesti da 3 fonti gratuite:
-* TVmaze
-* TVIT (repo GitHub open source)
-* IPTV-org JSON guide
-
-Ogni programma viene incluso solo se **almeno 2 fonti** concordano
-(o se è presente in una sola fonte quando le altre non coprono il canale).
+Questa versione dimostrativa utilizza l'API gratuita di **TVmaze** per ottenere
+il palinsesto giornaliero, senza effettuare scraping di siti web. In futuro può
+essere estesa ad altre fonti come TVIT o IPTV-org.
 
 ## Installazione (HACS)
 1. Aggiungi questo repo ai *Custom repositories* (categoria Integration).
