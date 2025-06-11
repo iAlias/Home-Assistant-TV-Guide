@@ -58,11 +58,11 @@ async def _fetch_page(session: aiohttp.ClientSession, url: str) -> str | None:
     """Download semplice con timeout e log."""
     try:
         async with async_timeout.timeout(15):
-            resp = await session.get(url)
-            if resp.status != 200:
-                _LOGGER.warning("Sorrisi: %s status %s", url, resp.status)
-                return None
-            return await resp.text()
+            async with session.get(url) as resp:
+                if resp.status != 200:
+                    _LOGGER.warning("Sorrisi: %s status %s", url, resp.status)
+                    return None
+                return await resp.text()
     except Exception as err:  # noqa: BLE001
         _LOGGER.error("Errore fetching %s: %s", url, err)
         return None
