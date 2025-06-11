@@ -1,6 +1,6 @@
 # <img src="icon.svg" width="96" alt="icon" align="right">
 
-# TV Guide Multi‑Source (v3.1.1)
+# TV Guide Multi‑Source (v4.0.0)
 
 Integrazione Home Assistant che mostra i palinsesti raccolti dal sito
 "TV Sorrisi e Canzoni" (`sorrisi.com`). I canali vengono ordinati secondo la
