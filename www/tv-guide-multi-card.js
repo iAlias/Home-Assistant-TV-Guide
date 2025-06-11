@@ -22,13 +22,16 @@ class TvGuideMultiCard extends HTMLElement {
           display: grid;
           row-gap: 16px;
           font-family: var(--tv-guide-font-family, var(--ha-card-header-font-family, "Roboto", "Helvetica Neue", sans-serif));
-          background: var(--tv-guide-background, linear-gradient(to bottom, rgba(255,255,255,0.6), rgba(255,255,255,0.3)));
+          background: var(--tv-guide-background,
+            linear-gradient(135deg, var(--card-background-color, #fff), var(--secondary-background-color, #f5f7fa)));
           border-radius: var(--ha-card-border-radius, 12px);
+          box-shadow: var(--tv-guide-container-shadow, var(--ha-card-box-shadow, 0 2px 4px rgba(0,0,0,0.15)));
         }
         h3 {
-          margin: 0 0 8px 0;
+          margin: 0 0 8px;
           font-size: 1.1rem;
           font-weight: 600;
+          color: var(--tv-guide-header-color, var(--primary-text-color));
         }
         ul {
           padding: 0;
@@ -49,10 +52,10 @@ class TvGuideMultiCard extends HTMLElement {
         }
         li:hover {
           background: var(--tv-guide-item-hover-background, rgba(0,0,0,0.1));
-          box-shadow: var(--tv-guide-item-shadow, 0 2px 4px rgba(0,0,0,0.2));
+          box-shadow: var(--tv-guide-item-shadow, 0 2px 6px rgba(0,0,0,0.25));
         }
         li:nth-child(even) {
-          background: var(--tv-guide-item-background-alt, rgba(0,0,0,0.1));
+          background: var(--tv-guide-item-background-alt, rgba(0,0,0,0.08));
         }
         span.idx {
           display: inline-grid;
