@@ -125,3 +125,103 @@ class TvGuideMultiCard extends HTMLElement {
   }
 }
 customElements.define("tv-guide-multi-card", TvGuideMultiCard);
+
+class TvGuideMultiCardEditor extends HTMLElement {
+  setConfig(config) {
+    this._config = { ...config };
+    this._render();
+  }
+
+  set hass(hass) {
+    this._hass = hass;
+    this._assign();
+  }
+
+  _assign() {
+    if (!this.shadowRoot) return;
+    this.shadowRoot
+      .querySelectorAll("ha-entity-picker")
+      .forEach((el) => {
+        el.hass = this._hass;
+      });
+  }
+
+  _render() {
+    if (!this.shadowRoot) {
+      this.attachShadow({ mode: "open" });
+    }
+    const cfg = this._config || {};
+    this.shadowRoot.innerHTML = `
+      <style>
+        .form {
+          padding: 16px;
+          display: grid;
+          row-gap: 12px;
+        }
+      </style>
+      <div class="form">
+        <ha-textfield
+          label="Titolo"
+          value="${cfg.title || ""}"
+          configValue="title"
+        ></ha-textfield>
+        <ha-entity-picker
+          label="Entity ora in onda"
+          value="${cfg.now_entity || ""}"
+          configValue="now_entity"
+        ></ha-entity-picker>
+        <ha-entity-picker
+          label="Entity prima serata"
+          value="${cfg.prime_entity || ""}"
+          configValue="prime_entity"
+        ></ha-entity-picker>
+        <ha-textarea
+          label="Canali (uno per riga)"
+          configValue="channels"
+        >${(cfg.channels || []).join("\n")}</ha-textarea>
+      </div>
+    `;
+    this._assign();
+    this.shadowRoot
+      .querySelectorAll('[configValue]')
+      .forEach((el) =>
+        el.addEventListener('change', (ev) => this._valueChanged(ev))
+      );
+  }
+
+  _valueChanged(ev) {
+    if (!this._config) this._config = {};
+    const target = ev.target;
+    const prop = target.configValue;
+    if (prop === 'channels') {
+      this._config.channels = target.value
+        .split(/\n|,/)
+        .map((v) => v.trim())
+        .filter(Boolean);
+    } else {
+      const value = target.value;
+      if (value === '') {
+        delete this._config[prop];
+      } else {
+        this._config[prop] = value;
+      }
+    }
+    this.dispatchEvent(
+      new CustomEvent('config-changed', { detail: { config: this._config } })
+    );
+  }
+}
+customElements.define('tv-guide-multi-card-editor', TvGuideMultiCardEditor);
+
+TvGuideMultiCard.getConfigElement = async function () {
+  return document.createElement('tv-guide-multi-card-editor');
+};
+
+TvGuideMultiCard.getStubConfig = function () {
+  return {
+    title: 'Guida TV',
+    now_entity: '',
+    prime_entity: '',
+    channels: ['Rai 1', 'Rai 2', 'Rai 3'],
+  };
+};
