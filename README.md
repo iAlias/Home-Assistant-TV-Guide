@@ -3,8 +3,11 @@
 # TV Guide Multi‑Source (v3.1.1)
 
 Questa versione dimostrativa utilizza l'API gratuita di **TVmaze** per ottenere
-il palinsesto giornaliero, senza effettuare scraping di siti web. In futuro può
-essere estesa ad altre fonti come TVIT o IPTV-org.
+il palinsesto giornaliero, senza effettuare scraping di siti web. L'endpoint di
+TVmaze copre principalmente Stati Uniti, Regno Unito, Canada e Australia; per
+alcuni Paesi (ad esempio l'Italia) la copertura è parziale e potrebbe non
+restituire alcun dato. In futuro può essere estesa ad altre fonti come TVIT o
+IPTV-org.
 
 ## Installazione (HACS)
 1. Aggiungi questo repo ai *Custom repositories* (categoria Integration).

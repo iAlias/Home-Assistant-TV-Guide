@@ -11,7 +11,7 @@ Per ogni canale vengono popolati due sensori:
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime
+from datetime import datetime, timedelta
 import logging
 from typing import Dict, List
 
