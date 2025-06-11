@@ -2,13 +2,9 @@
 
 # TV Guide Multi‑Source (v3.1.1)
 
-Integrazione Home Assistant che aggrega i palinsesti da 3 fonti gratuite:
-* TVmaze
-* TVIT (repo GitHub open source)
-* IPTV-org JSON guide
-
-Ogni programma viene incluso solo se **almeno 2 fonti** concordano
-(o se è presente in una sola fonte quando le altre non coprono il canale).
+Integrazione Home Assistant che mostra i palinsesti raccolti dal sito
+"TV Sorrisi e Canzoni" (`sorrisi.com`). I canali vengono ordinati secondo la
+numerazione italiana tradizionale.
 
 ## Installazione (HACS)
 1. Aggiungi questo repo ai *Custom repositories* (categoria Integration).
