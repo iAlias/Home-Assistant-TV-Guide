@@ -1,10 +1,10 @@
 # <img src="icon.svg" width="96" alt="icon" align="right">
 
-# TV Guide Multi‑Source (v3.1.1)
+# TV Guide Multi‑Source (v4.1.0)
 
 Integrazione Home Assistant che mostra i palinsesti raccolti dal sito
 "TV Sorrisi e Canzoni" (`sorrisi.com`). I canali vengono ordinati secondo la
-numerazione italiana tradizionale.
+numerazione italiana tradizionale. La card elenca i canali con il relativo numero ed ordina automaticamente l'elenco.
 
 ## Installazione (HACS)
 1. Aggiungi questo repo ai *Custom repositories* (categoria Integration).
@@ -21,7 +21,7 @@ sensor:
 ### Card
 ```yaml
 resources:
-  - url: /local/tv-guide-multi-card.js?v=1
+  - url: /local/tv-guide-multi-card.js?v=3
     type: module
 ```
 
@@ -38,4 +38,16 @@ channels:
   - Canale 5
   - Italia 1
   - La7
+```
+
+Per personalizzare l'aspetto con [card_mod](https://github.com/thomasloven/lovelace-card-mod) puoi aggiungere, ad esempio:
+
+```yaml
+style: |
+  ha-card {
+    border-radius: 16px;
+    box-shadow: var(--ha-card-box-shadow, 0 2px 6px rgba(0,0,0,0.3));
+    padding: 12px;
+    background: var(--card-background-color);
+  }
 ```
