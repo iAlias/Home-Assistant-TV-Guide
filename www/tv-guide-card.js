@@ -19,7 +19,7 @@ class TvGuideMultiCard extends HTMLElement {
           font-family: var(--ha-card-header-font-family, "Roboto", "Helvetica Neue", sans-serif);
         }
         h3 {
-          margin: 0 0 8px;
+          margin: 0;
           font-size: 1rem;
           font-weight: 600;
         }
@@ -30,17 +30,27 @@ class TvGuideMultiCard extends HTMLElement {
         }
         li {
           display: grid;
-          grid-template-columns: 1.5em auto 1fr;
+          grid-template-columns: 2em auto 1fr;
           gap: 8px;
           align-items: center;
-          padding: 4px 0;
-          line-height: 1.4;
-          border-bottom: 1px solid var(--divider-color);
+          padding: 6px 8px;
+          margin-bottom: 4px;
+          border-radius: 8px;
+          background: var(--tv-guide-item-background, rgba(0,0,0,0.05));
+        }
+        li:nth-child(even) {
+          background: var(--tv-guide-item-background-alt, rgba(0,0,0,0.1));
         }
         span.idx {
-          text-align: right;
-          color: var(--secondary-text-color);
+          display: inline-grid;
+          place-items: center;
+          width: 1.8em;
+          height: 1.8em;
+          background: var(--accent-color);
+          color: var(--text-primary-color, #fff);
+          font-size: 0.75rem;
           font-weight: 600;
+          border-radius: 50%;
         }
         span.channel {
           font-weight: 600;
