@@ -73,18 +73,15 @@ def _parse_sorrisi(html: str) -> Dict[str, str]:
     soup = BeautifulSoup(html, "html.parser")
     mapping: Dict[str, str] = {}
 
-    for header in soup.select("div.gtv-channel-header"):
-        logo = header.find("a", class_="gtv-logo")
-        channel = logo.get("data-channel-name") if logo else header.get_text(strip=True)
-
-        # "Ora in TV" usa la classe gtv-program-on-air, "Stasera" solo gtv-program
-        article = header.find_next("article", class_="gtv-program-on-air")
-        if article is None:
-            article = header.find_next("article", class_="gtv-program")
-
-        title_el = article.find("h3", class_="gtv-program-title") if article else None
-        if channel and title_el:
-            mapping[channel] = title_el.get_text(strip=True)
+    # Ogni canale è in <h3> col titolo del programma subito dopo
+    # il markup attuale è: <h3>Rai 1</h3><p class="title">Il Paradiso...</p>
+    for h in soup.find_all("h3"):
+        channel = h.get_text(strip=True)
+        # Cerca l'elemento successivo che contenga il titolo
+        nxt = h.find_next(lambda tag: tag.name in ("h4", "p") and tag.get_text(strip=True))
+        if channel and nxt:
+            title = nxt.get_text(strip=True)
+            mapping[channel] = title
 
     _LOGGER.debug("Estratti %s programmi", len(mapping))
     return mapping
