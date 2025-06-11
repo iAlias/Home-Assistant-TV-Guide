@@ -38,12 +38,17 @@ class TvGuideMultiCard extends HTMLElement {
         }
         li {
           display: grid;
-          grid-template-columns: auto 1fr;
+          grid-template-columns: 1.5em auto 1fr;
           gap: 8px;
           align-items: center;
           padding: 4px 0;
           line-height: 1.4;
           border-bottom: 1px solid var(--divider-color);
+        }
+        span.idx {
+          text-align: right;
+          color: var(--secondary-text-color);
+          font-weight: 600;
         }
         span.channel {
           font-weight: 600;
@@ -64,13 +69,17 @@ class TvGuideMultiCard extends HTMLElement {
     const nowMap   = nowState?.attributes.programmi_correnti || {};
     const primeMap = primeState?.attributes.prima_serata      || {};
 
-    const channels = cfg.channels || Object.keys({...nowMap, ...primeMap}).sort();
+    const keys = cfg.channels || [
+      ...Object.keys(nowMap),
+      ...Object.keys(primeMap).filter((k) => !(k in nowMap)),
+    ];
+    const channels = Array.from(new Set(keys));
 
     const section = (label, map) => {
       let html = `<h3>${label}</h3><ul>`;
-      channels.forEach(ch => {
+      channels.forEach((ch, idx) => {
         const title = map[ch] || "—";
-        html += `<li><span class="channel">${ch}</span><span class="prog">${title}</span></li>`;
+        html += `<li><span class="idx">${idx + 1}</span><span class="channel">${ch}</span><span class="prog">${title}</span></li>`;
       });
       html += "</ul>";
       return html;
