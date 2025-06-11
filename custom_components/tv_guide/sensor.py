@@ -31,6 +31,22 @@ _LOGGER = logging.getLogger(__name__)
 
 DEFAULT_NAME = "Guida TV"
 
+# Ordine numerico italiano dei canali principali
+CHANNEL_ORDER = [
+    "Rai 1",
+    "Rai 2",
+    "Rai 3",
+    "Rete 4",
+    "Canale 5",
+    "Italia 1",
+    "La7",
+    "TV8",
+    "NOVE",
+]
+
+# Alcuni canali non vanno mostrati
+SKIP_CHANNELS = {"IRIS", "CANALE 20", "20", "20 MEDIASET"}
+
 URL_NOW = "https://www.sorrisi.com/guidatv/ora-in-tv/"
 URL_PRIME = "https://www.sorrisi.com/guidatv/stasera-in-tv/"
 
@@ -73,18 +89,34 @@ def _parse_sorrisi(html: str) -> Dict[str, str]:
     soup = BeautifulSoup(html, "html.parser")
     mapping: Dict[str, str] = {}
 
-    # Ogni canale è in <h3> col titolo del programma subito dopo
-    # il markup attuale è: <h3>Rai 1</h3><p class="title">Il Paradiso...</p>
-    for h in soup.find_all("h3"):
-        channel = h.get_text(strip=True)
-        # Cerca l'elemento successivo che contenga il titolo
-        nxt = h.find_next(lambda tag: tag.name in ("h4", "p") and tag.get_text(strip=True))
-        if channel and nxt:
-            title = nxt.get_text(strip=True)
-            mapping[channel] = title
+    for header in soup.select("div.gtv-channel-header"):
+        logo = header.find("a", class_="gtv-logo")
+        channel = logo.get("data-channel-name") if logo else header.get_text(strip=True)
 
-    _LOGGER.debug("Estratti %s programmi", len(mapping))
-    return mapping
+        # "Ora in TV" usa la classe gtv-program-on-air, "Stasera" solo gtv-program
+        article = header.find_next("article", class_="gtv-program-on-air")
+        if article is None:
+            article = header.find_next("article", class_="gtv-program")
+
+        title_el = article.find("h3", class_="gtv-program-title") if article else None
+        if channel and title_el:
+            chan = channel.strip()
+            key = chan.upper().replace(" ", "")
+            if key in SKIP_CHANNELS:
+                continue
+            mapping[chan] = title_el.get_text(strip=True)
+
+    def sort_key(item: tuple[str, str]) -> tuple[int, str]:
+        try:
+            idx = CHANNEL_ORDER.index(item[0])
+        except ValueError:
+            idx = len(CHANNEL_ORDER)
+        return (idx, item[0])
+
+    ordered = dict(sorted(mapping.items(), key=sort_key))
+
+    _LOGGER.debug("Estratti %s programmi", len(ordered))
+    return ordered
 
 
 async def get_now_and_prime(session) -> tuple[Dict[str, str], Dict[str, str]]:
