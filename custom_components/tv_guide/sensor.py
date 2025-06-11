@@ -1,9 +1,10 @@
-"""TV Guide Multi-Source.
+"""TV Guide Multi-Source 3.1.0 — scraper “TV Sorrisi e Canzoni”.
 
-Versione che utilizza l'API gratuita di TVmaze per ottenere il palinsesto
-odierno, evitando qualsiasi scraping di siti web.
+Preleva due pagine HTML:
+    • https://www.sorrisi.com/guidatv/ora-in-tv/
+    • https://www.sorrisi.com/guidatv/stasera-in-tv/
 
-Per ogni canale vengono popolati due sensori:
+Estrae (canale, titolo) e popola i sensori:
     sensor.guida_tv_ora_in_onda
     sensor.guida_tv_prima_serata
 """
@@ -18,11 +19,10 @@ from typing import Dict, List
 import aiohttp
 import async_timeout
 import voluptuous as vol
-from zoneinfo import ZoneInfo
+from bs4 import BeautifulSoup
 
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.const import CONF_NAME
-CONF_COUNTRY = "country"
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 import homeassistant.helpers.config_validation as cv
@@ -31,13 +31,11 @@ _LOGGER = logging.getLogger(__name__)
 
 DEFAULT_NAME = "Guida TV"
 
-API_URL = "https://api.tvmaze.com/schedule?country={country}&date={date}"
+URL_NOW = "https://www.sorrisi.com/guidatv/ora-in-tv/"
+URL_PRIME = "https://www.sorrisi.com/guidatv/stasera-in-tv/"
 
 PLATFORM_SCHEMA = cv.PLATFORM_SCHEMA.extend(
-    {
-        vol.Optional(CONF_NAME, default=DEFAULT_NAME): cv.string,
-        vol.Optional(CONF_COUNTRY, default="IT"): cv.string,
-    }
+    {vol.Optional(CONF_NAME, default=DEFAULT_NAME): cv.string}
 )
 
 
@@ -46,73 +44,66 @@ async def async_setup_platform(
 ):
     """Configura i sensori."""
     name = config.get(CONF_NAME)
-    country = config.get(CONF_COUNTRY)
     session = async_get_clientsession(hass)
 
     async_add_entities(
-        [TvMazeNowSensor(name, country, session), TvMazePrimeSensor(name, country, session)], True
+        [SorrisiNowSensor(name, session), SorrisiPrimeSensor(name, session)], True
     )
 
 
 # -----------------------------------------------------------------------------
 
 
-async def _fetch_schedule(session: aiohttp.ClientSession, country: str) -> list | None:
-    """Scarica il palinsesto giornaliero da TVmaze."""
-    today = datetime.now().strftime("%Y-%m-%d")
-    url = API_URL.format(country=country, date=today)
+async def _fetch_page(session: aiohttp.ClientSession, url: str) -> str | None:
+    """Download semplice con timeout e log."""
     try:
         async with async_timeout.timeout(15):
             async with session.get(url) as resp:
                 if resp.status != 200:
-                    _LOGGER.warning("TVmaze: %s status %s", url, resp.status)
+                    _LOGGER.warning("Sorrisi: %s status %s", url, resp.status)
                     return None
-                return await resp.json()
+                return await resp.text()
     except Exception as err:  # noqa: BLE001
         _LOGGER.error("Errore fetching %s: %s", url, err)
         return None
 
 
-def _parse_tvmaze(data: list) -> tuple[Dict[str, str], Dict[str, str]]:
-    """Ritorna due mapping {canale: titolo} per ora e prima serata."""
-    now = datetime.now(tz=ZoneInfo("Europe/Rome"))
-    prime_start = now.replace(hour=21, minute=0, second=0, microsecond=0)
-    now_map: Dict[str, str] = {}
-    prime_map: Dict[str, str] = {}
+def _parse_sorrisi(html: str) -> Dict[str, str]:
+    """Ritorna {canale: titolo} dal markup di Sorrisi e Canzoni."""
+    soup = BeautifulSoup(html, "html.parser")
+    mapping: Dict[str, str] = {}
 
-    for item in data:
-        show = item.get("show") or {}
-        network = show.get("network")
-        if not network:
-            continue
-        channel = network.get("name")
-        country = network.get("country", {})
-        tz_name = country.get("timezone", "UTC")
-        start = datetime.fromisoformat(item["airstamp"]).astimezone(ZoneInfo(tz_name))
-        runtime = item.get("runtime") or 0
-        end = start + timedelta(minutes=runtime)
+    for header in soup.select("div.gtv-channel-header"):
+        logo = header.find("a", class_="gtv-logo")
+        channel = logo.get("data-channel-name") if logo else header.get_text(strip=True)
 
-        if start <= now < end:
-            now_map[channel] = item.get("name", "")
+        # "Ora in TV" usa la classe gtv-program-on-air, "Stasera" solo gtv-program
+        article = header.find_next("article", class_="gtv-program-on-air")
+        if article is None:
+            article = header.find_next("article", class_="gtv-program")
 
-        if start >= prime_start and channel not in prime_map:
-            prime_map[channel] = item.get("name", "")
+        title_el = article.find("h3", class_="gtv-program-title") if article else None
+        if channel and title_el:
+            mapping[channel] = title_el.get_text(strip=True)
 
+    _LOGGER.debug("Estratti %s programmi", len(mapping))
+    return mapping
+
+
+async def get_now_and_prime(session) -> tuple[Dict[str, str], Dict[str, str]]:
+    """Scarica ed estrae le due sezioni; ritorna (ora, stasera)."""
+    html_now, html_prime = await asyncio.gather(
+        _fetch_page(session, URL_NOW), _fetch_page(session, URL_PRIME)
+    )
+    now_map = _parse_sorrisi(html_now) if html_now else {}
+    prime_map = _parse_sorrisi(html_prime) if html_prime else {}
     return now_map, prime_map
-
-
-async def get_now_and_prime(session, country: str) -> tuple[Dict[str, str], Dict[str, str]]:
-    """Ritorna i mapping per ora e prima serata da TVmaze."""
-    data = await _fetch_schedule(session, country)
-    if not data:
-        return {}, {}
-    return _parse_tvmaze(data)
 
 
 # -----------------------------------------------------------------------------
 
 
-class _TvMazeBase(SensorEntity):
+class _SorrisiBase(SensorEntity):
     """Base comune; scarica una sola volta al giorno."""
 
     _attr_should_poll = True
@@ -121,28 +112,23 @@ class _TvMazeBase(SensorEntity):
     _cache_prime: Dict[str, str] = {}
     _session: aiohttp.ClientSession
 
-    _country: str
-
     async def _ensure_cache(self):
         today = datetime.now().strftime("%Y-%m-%d")
         if self._cache_date == today:
             return
-        self._cache_now, self._cache_prime = await get_now_and_prime(
-            self._session, self._country
-        )
+        self._cache_now, self._cache_prime = await get_now_and_prime(self._session)
         self._cache_date = today
 
 
-class TvMazeNowSensor(_TvMazeBase):
+class SorrisiNowSensor(_SorrisiBase):
     """Programmi in onda adesso."""
 
     _attr_icon = "mdi:television-play"
 
-    def __init__(self, base_name: str, country: str, session):
+    def __init__(self, base_name: str, session):
         self._attr_name = f"{base_name} - Ora in onda"
-        self._attr_unique_id = "tvguide_tvmaze_now"
+        self._attr_unique_id = "tvguide_sorrisi_now"
         self._session = session
-        self._country = country
 
     async def async_update(self):
         await self._ensure_cache()
@@ -151,20 +137,19 @@ class TvMazeNowSensor(_TvMazeBase):
         )
         self._attr_extra_state_attributes = {
             "programmi_correnti": self._cache_now,
-            "fonte": "tvmaze.com",
+            "fonte": "sorrisi.com",
         }
 
 
-class TvMazePrimeSensor(_TvMazeBase):
+class SorrisiPrimeSensor(_SorrisiBase):
     """Programmi di prima serata (Stasera)."""
 
     _attr_icon = "mdi:movie-open"
 
-    def __init__(self, base_name: str, country: str, session):
+    def __init__(self, base_name: str, session):
         self._attr_name = f"{base_name} - Prima serata"
-        self._attr_unique_id = "tvguide_tvmaze_prime"
+        self._attr_unique_id = "tvguide_sorrisi_prime"
         self._session = session
-        self._country = country
 
     async def async_update(self):
         await self._ensure_cache()
@@ -173,5 +158,5 @@ class TvMazePrimeSensor(_TvMazeBase):
         )
         self._attr_extra_state_attributes = {
             "prima_serata": self._cache_prime,
-            "fonte": "tvmaze.com",
+            "fonte": "sorrisi.com",
         }
