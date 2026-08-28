@@ -1,16 +1,16 @@
 {
   "domain": "tv_guide_multi",
   "name": "TV Guide Multi-Source",
-  "version": "4.1.0",
-  "icon": "mdi:television-guide",
-  "documentation": "https://github.com/iAlias/Home-Assistant-TV-Guide",
-  "issue_tracker": "https://github.com/iAlias/Home-Assistant-TV-Guide/issues",
   "codeowners": ["@iAlias"],
+  "dependencies": [],
+  "documentation": "https://github.com/iAlias/Home-Assistant-TV-Guide",
+  "icon": "mdi:television-guide",
   "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/iAlias/Home-Assistant-TV-Guide/issues",
   "requirements": [
     "aiohttp>=3.8.4",
     "async_timeout>=4.0.3",
     "beautifulsoup4>=4.12.3"
   ],
-  "dependencies": []
+  "version": "4.1.0"
 }
