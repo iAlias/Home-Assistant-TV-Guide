@@ -4,7 +4,6 @@
   "codeowners": ["@iAlias"],
   "dependencies": [],
   "documentation": "https://github.com/iAlias/Home-Assistant-TV-Guide",
-  "icon": "mdi:television-guide",
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/iAlias/Home-Assistant-TV-Guide/issues",
   "requirements": [
