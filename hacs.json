@@ -1,6 +1,7 @@
 {
-  "name": "TV Guide Multi\u2011Source",
+  "name": "TV Guide Multi-Source",
   "content_in_root": false,
-  "file_name": "tv-guide-multi-card.js",
-  "render_readme": true
+  "homeassistant": "2024.1.0",
+  "render_readme": true,
+  "country": ["IT"]
 }
