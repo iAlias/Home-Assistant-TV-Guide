@@ -30,7 +30,7 @@ non devi toccare niente.
 ### 1. L'integrazione, con HACS
 
 1. HACS → Integrazioni → menù in alto a destra → **Repository personalizzati**
-2. Incolla `https://github.com/iAlias/Home-Assistant-TV-Guide`, categoria **Integration**
+2. Incolla `https://github.com/iAlias/HomeAssistantTVGuide`, categoria **Integration**
 3. Installa e riavvia Home Assistant
 
 Poi aggiungi i sensori in `configuration.yaml`:
@@ -96,7 +96,7 @@ style: |
 - **I dati arrivano leggendo un sito, non un'API.** Non esiste un palinsesto pubblico aperto per la
   TV italiana, quindi le pagine di sorrisi.com vengono lette e interpretate. Funziona bene, ma se
   loro cambiano l'impaginazione la lettura va aggiornata: se un giorno i sensori diventano
-  `Nessun dato`, è quasi sempre questo — [apri una segnalazione](https://github.com/iAlias/Home-Assistant-TV-Guide/issues).
+  `Nessun dato`, è quasi sempre questo — [apri una segnalazione](https://github.com/iAlias/HomeAssistantTVGuide/issues).
 - **Solo canali italiani.** L'ordinamento segue la numerazione LCN nazionale.
 - **Rispetta la fonte.** L'integrazione tiene in memoria i palinsesti invece di riscaricarli a ogni
   controllo: se ne modifichi il funzionamento, evita di trasformare il sito in un bersaglio.

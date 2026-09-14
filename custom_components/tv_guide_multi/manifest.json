@@ -3,9 +3,9 @@
   "name": "TV Guide Multi-Source",
   "codeowners": ["@iAlias"],
   "dependencies": [],
-  "documentation": "https://github.com/iAlias/Home-Assistant-TV-Guide",
+  "documentation": "https://github.com/iAlias/HomeAssistantTVGuide",
   "iot_class": "cloud_polling",
-  "issue_tracker": "https://github.com/iAlias/Home-Assistant-TV-Guide/issues",
+  "issue_tracker": "https://github.com/iAlias/HomeAssistantTVGuide/issues",
   "requirements": [
     "aiohttp>=3.8.4",
     "async_timeout>=4.0.3",
